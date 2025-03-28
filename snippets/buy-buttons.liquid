@@ -55,6 +55,9 @@
           {% endif %}
           class="product-variant-id"
         >
+          <input type="hidden" name="properties[Fabric]" id="product-fabric" value="">
+          <input type="hidden" name="properties[Colour]" id="product-colour" value="">
+          <input type="hidden" name="properties[Width]" id="product-width" value="">
 
         {%- if gift_card_recipient_feature_active -%}
           {%- render 'gift-card-recipient-form', product: product, form: form, section: section -%}
