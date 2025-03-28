@@ -15,7 +15,7 @@
   {{ 'component-slider.css' | asset_url | stylesheet_tag }}
   {{ 'component-rating.css' | asset_url | stylesheet_tag }}
   {{ 'component-deferred-media.css' | asset_url | stylesheet_tag }}
-
+  {{ 'custom.css' | asset_url | stylesheet_tag }}
   {% unless product.has_only_default_variant %}
     {{ 'component-product-variant-picker.css' | asset_url | stylesheet_tag }}
     {{ 'component-swatch-input.css' | asset_url | stylesheet_tag }}
@@ -25,6 +25,7 @@
     {{ 'component-volume-pricing.css' | asset_url | stylesheet_tag }}
   {%- endif -%}
 
+  <script src="{{ 'width-selector.js' | asset_url }}" defer></script>
   {%- style -%}
     .section-{{ section.id }}-padding {
       padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
@@ -140,6 +141,7 @@
                     {{ form | payment_terms }}
                   {%- endform -%}
                 </div>
+
               {%- when 'inventory' -%}
                 <p
                   class="product__inventory{% if block.settings.text_style == 'uppercase' %} caption-with-letter-spacing{% elsif block.settings.text_style == 'subtitle' %} subtitle{% endif %}{% if product.selected_or_first_available_variant.inventory_management != 'shopify' %} visibility-hidden{% endif %}"
@@ -356,7 +358,10 @@
                                 </dt>
                                 <dd>
                                   <span class="price-per-item--current">
-                                    {{- 'products.product.volume_pricing.price_at_each_html' | t: price: variant_price -}}
+                                    {{-
+                                      'products.product.volume_pricing.price_at_each_html'
+                                      | t: price: variant_price
+                                    -}}
                                   </span>
                                 </dd>
                               </dl>
@@ -462,7 +467,55 @@
                 %}
 
               {%- when 'variant_picker' -%}
+                <div class="product-options">
+                  {% if product.metafields.custom.fabric_colors %}
+                    <button type="button" class="product-option-trigger" data-option-type="fabric">
+                      <span class="option-label">Fabric</span>
+                      <span class="selected-value">{{ product.metafields.custom.fabric_colors.value[0].name }}</span>
+                      <span class="svg-wrapper">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </button>
+                  {% endif %}
+
+                  {% if product.metafields.custom.fabric_colors %}
+                    <button type="button" class="product-option-trigger" data-option-type="color">
+                      <span class="option-label">Colour</span>
+                      <span class="selected-value">
+                        {{- product.metafields.custom.fabric_colors.value[0].color.value[0].name -}}
+                      </span>
+                      <span class="svg-wrapper">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </button>
+                  {% endif %}
+                </div>
                 {% render 'product-variant-picker', product: product, block: block, product_form_id: product_form_id %}
+                {% if product.metafields.custom.width_panel_count.value %}
+                  <width-selector class="width-selector-wrapper product-form__input">
+                    <label class="form__label" for="width-selector">
+                      Width
+                      <span class="visually-hidden"> selector</span>
+                    </label>
+                    <div class="select">
+                      <select
+                        id="width-selector"
+                        class="select__select"
+                        name="width"
+                        form="{{ product_form_id }}"
+                      >
+                        {% for option in product.metafields.custom.width_panel_count.value %}
+                          <option value="{{ option.width }}" data-panel-count="{{ option.panel_count }}">
+                            {{ option.width }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                      <span class="svg-wrapper">
+                        {{- 'icon-caret.svg' | inline_asset_content -}}
+                      </span>
+                    </div>
+                  </width-selector>
+                {% endif %}
               {%- when 'buy_buttons' -%}
                 {%- render 'buy-buttons',
                   block: block,
@@ -723,6 +776,59 @@
     </script>
   </div>
 </product-info>
+
+{% comment %} Add this at the bottom of your product template {% endcomment %}
+<product-options-drawer>
+  <div class="product-options-drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <h2 class="drawer-heading">Choose Option</h2>
+      <button type="button" class="drawer-close">
+        <span class="visually-hidden">Close</span>
+        ✕
+      </button>
+    </div>
+
+    <div class="fabric-options option-content">
+      <div class="fabrics-grid">
+        <h3 class="option-label-heading">Fabric Selection</h3>
+        <div class="options-grid">
+          {% for fabric in product.metafields.custom.fabric_colors.value %}
+            <div class="option-item fabric-item" data-value="{{ fabric.name }}">
+              <div class="fabric-swatch">
+                {% if fabric.fabric_image != blank %}
+                  {{ fabric.fabric_image | image_url: width: 80, height: 80 | image_tag }}
+                {% endif %}
+                <span class="fabric-name">{{ fabric.name }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="colors-section">
+        <h3 class="option-label-heading">Colour Selection</h3>
+        {% for fabric in product.metafields.custom.fabric_colors.value %}
+          <div class="fabric-colors" data-fabric="{{ fabric.name }}">
+            <div class="options-grid">
+              {% for color in fabric.color.value %}
+                <div class="option-item color-item" data-value="{{ color.name }}" data-fabric="{{ fabric.name }}">
+                  <div class="color-swatch">
+                    <div class="swatch-color" style="background-color: {{ color.color_code }}"></div>
+                  </div>
+                  <span>{{ color.name }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="button" class="confirm-choices">Confirm choices</button>
+  </div>
+</product-options-drawer>
+
+<script src="{{ 'product-options-drawer.js' | asset_url }}" defer></script>
 
 {% schema %}
 {
@@ -1674,7 +1780,7 @@
         {
           "type": "header",
           "content": "t:sections.main-product.blocks.icon_with_text.settings.pairing_2.label"
-        },        
+        },
         {
           "type": "select",
           "id": "icon_2",
@@ -1874,7 +1980,7 @@
         {
           "type": "header",
           "content": "t:sections.main-product.blocks.icon_with_text.settings.pairing_3.label"
-        },        
+        },
         {
           "type": "select",
           "id": "icon_3",
@@ -2176,7 +2282,7 @@
       ],
       "default": "hide",
       "label": "t:sections.main-product.settings.mobile_thumbnails.label"
-    },    
+    },
     {
       "type": "select",
       "id": "media_position",
